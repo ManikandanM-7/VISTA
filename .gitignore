@@ -1,0 +1,63 @@
+# ── Python ───────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Virtual Environment ───────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Environment Variables (SECRETS) ──────────────
+.env
+.env.*
+
+# ── Models (large binary files) ──────────────────
+models/*.pt
+models/*.onnx
+models/*.pkl
+
+# ── Data (large datasets) ─────────────────────────
+data/raw/
+data/synthetic/
+data/chroma_db/
+
+# ── Node / Frontend ───────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── IDEs ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ─────────────────────────────────────────
+*.log
+logs/
+
+# ── MLflow ───────────────────────────────────────
+mlruns/
+mlartifacts/
+
+# ── Jupyter ───────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── pytest / coverage ─────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/

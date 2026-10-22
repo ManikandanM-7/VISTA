@@ -1,0 +1,113 @@
+version: "3.9"
+
+# ============================================================
+# CogeTwin — Docker Compose
+# Run everything with: docker compose up
+# ============================================================
+
+services:
+
+  # --- Time-Series Database ---
+  influxdb:
+    image: influxdb:2.7
+    container_name: cogetwin_influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: cogetwin123
+      DOCKER_INFLUXDB_INIT_ORG: cogetwin
+      DOCKER_INFLUXDB_INIT_BUCKET: plant_sensors
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: cogetwin_influx_token_dev
+    volumes:
+      - ./docker/volumes/influxdb:/var/lib/influxdb2
+
+  # --- Relational Database ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: cogetwin_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: cogetwin
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./docker/volumes/postgres:/var/lib/postgresql/data
+
+  # --- Redis (Task Queue + Cache) ---
+  redis:
+    image: redis:7-alpine
+    container_name: cogetwin_redis
+    ports:
+      - "6379:6379"
+
+  # --- MLflow Experiment Tracking ---
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.14.1
+    container_name: cogetwin_mlflow
+    ports:
+      - "5000:5000"
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlartifacts
+    volumes:
+      - ./docker/volumes/mlflow:/mlartifacts
+
+  # --- FastAPI Backend ---
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: cogetwin_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - influxdb
+      - postgres
+      - redis
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # --- React Frontend ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: cogetwin_frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  # --- Ollama (Offline LLM) ---
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cogetwin_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./docker/volumes/ollama:/root/.ollama
+    # Uncomment for GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+networks:
+  default:
+    name: cogetwin_network
