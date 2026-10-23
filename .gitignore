@@ -28,6 +28,7 @@ models/*.pkl
 data/raw/
 data/synthetic/
 data/chroma_db/
+data/processed/
 
 # ── Node / Frontend ───────────────────────────────
 frontend/node_modules/
