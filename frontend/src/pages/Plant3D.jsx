@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Environment, Html, Edges } from "@react-three/drei";
+import { OrbitControls, Html, Edges } from "@react-three/drei";
 import { Send, MousePointer2, Move, ZoomIn, RefreshCw, AlertTriangle, Info, AlertCircle, Loader2 } from "lucide-react";
 
 const API = "http://localhost:8000";
@@ -42,7 +42,7 @@ function GlowingBox({ size, color }) {
   return (
     <mesh>
       <boxGeometry args={size} />
-      <meshBasicMaterial color={color} transparent opacity={0.08} />
+      <meshBasicMaterial color={color} transparent opacity={0.12} />
       <Edges scale={1.05} threshold={15} color={color} />
     </mesh>
   );
@@ -53,14 +53,14 @@ function AlertPin({ position, icon: Icon, color, text }) {
     <Html position={position} center zIndexRange={[100, 0]}>
       <div style={{
         display:"flex", alignItems:"center", gap:8,
-        background:"rgba(10,14,20,0.88)", backdropFilter:"blur(4px)",
-        border:`1.5px solid ${color}`, borderRadius:4,
+        background:"rgba(10,14,20,0.92)", backdropFilter:"blur(6px)",
+        border:`1.5px solid ${color}`, borderRadius:6,
         padding:"5px 11px", color, fontFamily:"sans-serif",
         fontWeight:"bold", fontSize:11, whiteSpace:"nowrap",
-        boxShadow:`0 0 15px ${color}44`, pointerEvents:"none"
+        boxShadow:`0 0 18px ${color}55`, pointerEvents:"none"
       }}>
         <div style={{ background:color, color:"#111", borderRadius:"50%", width:18, height:18, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <Icon size={12} strokeWidth={3} />
+          {Icon ? <Icon size={12} strokeWidth={3} /> : null}
         </div>
         {text}
       </div>
@@ -99,7 +99,7 @@ function BoilerUnit({ live, selected, onSelect, anomalies }) {
       {/* Body */}
       <SelectableMesh id="boiler" selected={selected} onSelect={onSelect} castShadow receiveShadow>
         <boxGeometry args={[4, 4, 6]} />
-        <meshStandardMaterial color={color} roughness={0.7} metalness={0.4} emissive={isCritical ? "#ef4444" : selected ? "#1d4ed8" : "#000"} emissiveIntensity={isCritical ? 0.15 : selected ? 0.1 : 0} />
+        <meshStandardMaterial color={color} roughness={0.7} metalness={0.4} emissive={isCritical ? "#ef4444" : selected ? "#1d4ed8" : "#000"} emissiveIntensity={isCritical ? 0.25 : selected ? 0.2 : 0} />
       </SelectableMesh>
       <mesh position={[2.1, 0, 0]} castShadow>
         <boxGeometry args={[0.5, 3, 4]} />
@@ -134,7 +134,7 @@ function TurbineUnit({ live, selected, onSelect, anomalies }) {
     <group position={[4, 1.5, 2]} onClick={e => { e.stopPropagation(); onSelect("turbine"); }}>
       <mesh ref={turbineRef} castShadow receiveShadow rotation={[0, 0, Math.PI/2]}>
         <cylinderGeometry args={[1.5, 1.5, 3.5, 24]} />
-        <meshStandardMaterial color={color} roughness={0.4} metalness={0.8} emissive={isWarning ? "#f59e0b" : selected ? "#1d4ed8" : "#000"} emissiveIntensity={isWarning ? 0.12 : selected ? 0.1 : 0} />
+        <meshStandardMaterial color={color} roughness={0.4} metalness={0.8} emissive={isWarning ? "#f59e0b" : selected ? "#1d4ed8" : "#000"} emissiveIntensity={isWarning ? 0.2 : selected ? 0.2 : 0} />
       </mesh>
       <SelectableMesh id="turbine" selected={selected} onSelect={onSelect} position={[3.5, -0.2, 0]} castShadow receiveShadow>
         <boxGeometry args={[3.5, 2.6, 2.6]} />
@@ -156,7 +156,7 @@ function TurbineUnit({ live, selected, onSelect, anomalies }) {
 function PumpUnit({ live, selected, onSelect, anomalies }) {
   const eff = live.thermal_efficiency || 0.88;
   const anom = anomalies.find(a => a.asset_id === "P-C" || a.anomaly_type?.toLowerCase().includes("pump") || a.anomaly_type?.toLowerCase().includes("effic"));
-  const isInfo = anom || eff < 0.85;
+  const isInfo = Boolean(anom);
   const color = isInfo ? "#eab308" : selected ? "#3b82f6" : "#475569";
 
   return (
@@ -203,19 +203,18 @@ function Ground() {
     <group>
       <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#64748b" roughness={1} />
+        <meshStandardMaterial color="#1e293b" roughness={0.8} metalness={0.2} />
       </mesh>
-      <gridHelper args={[100, 50, "#94a3b8", "#475569"]} position={[0, 0.01, 0]} />
-      <mesh position={[-15, 3, -15]} castShadow receiveShadow><boxGeometry args={[10, 6, 20]} /><meshStandardMaterial color="#cbd5e1" /></mesh>
-      <mesh position={[15, 2, -15]} castShadow receiveShadow><boxGeometry args={[20, 4, 10]} /><meshStandardMaterial color="#cbd5e1" /></mesh>
-      <mesh position={[-15, 2, 15]} castShadow receiveShadow><boxGeometry args={[12, 4, 12]} /><meshStandardMaterial color="#cbd5e1" /></mesh>
+      <gridHelper args={[100, 50, "#38bdf8", "#334155"]} position={[0, 0.01, 0]} />
+      <mesh position={[-15, 3, -15]} castShadow receiveShadow><boxGeometry args={[10, 6, 20]} /><meshStandardMaterial color="#334155" roughness={0.7} /></mesh>
+      <mesh position={[15, 2, -15]} castShadow receiveShadow><boxGeometry args={[20, 4, 10]} /><meshStandardMaterial color="#334155" roughness={0.7} /></mesh>
+      <mesh position={[-15, 2, 15]} castShadow receiveShadow><boxGeometry args={[12, 4, 12]} /><meshStandardMaterial color="#334155" roughness={0.7} /></mesh>
     </group>
   );
 }
 
 /* Deselect on click empty ground */
 function ClickCatcher({ onDeselect }) {
-  const { scene } = useThree();
   return (
     <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, -0.01, 0]} onClick={() => onDeselect(null)}>
       <planeGeometry args={[200, 200]} />
@@ -266,7 +265,7 @@ export default function Plant3D() {
   /* Auto-scroll chat */
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  /* Send chat message to real AI */
+  /* Send chat message to real AI backend */
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || sending) return;
@@ -275,7 +274,7 @@ export default function Plant3D() {
     setInput("");
     setSending(true);
     try {
-      const r = await fetch(`${API}/chat`, {
+      const r = await fetch(`${API}/chat/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
@@ -308,24 +307,39 @@ export default function Plant3D() {
   const assetFields = selected ? ASSET_FIELDS[selected] : [];
 
   return (
-    <div style={{ width:"100%", height:"calc(100vh - 64px)", position:"relative", background:"#e2e8f0", overflow:"hidden", fontFamily:"system-ui, sans-serif" }}>
+    <div style={{ width:"100%", height:"calc(100vh - 64px)", position:"relative", background:"#0b0f17", overflow:"hidden", fontFamily:"system-ui, sans-serif" }}>
 
       {/* ── 3D CANVAS ── */}
       <Canvas shadows camera={{ position:[-18, 15, 22], fov:40 }}>
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[20,30,10]} intensity={1.5} castShadow shadow-mapSize={[2048,2048]} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} />
-        <Ground />
-        <BoilerUnit  live={live} anomalies={anomalies} selected={selected==="boiler"}  onSelect={setSelected} />
-        <TurbineUnit live={live} anomalies={anomalies} selected={selected==="turbine"} onSelect={setSelected} />
-        <PumpUnit    live={live} anomalies={anomalies} selected={selected==="pump"}    onSelect={setSelected} />
-        <Pipes />
-        <ClickCatcher onDeselect={setSelected} />
-        <Environment preset="city" />
-        <OrbitControls maxPolarAngle={Math.PI/2 - 0.1} />
+        <color attach="background" args={["#0b0f17"]} />
+        <fog attach="fog" args={["#0b0f17", 25, 80]} />
+        <ambientLight intensity={0.7} />
+        <directionalLight
+          position={[20, 30, 10]}
+          intensity={1.5}
+          castShadow
+          shadow-mapSize={[2048, 2048]}
+          shadow-camera-left={-20}
+          shadow-camera-right={20}
+          shadow-camera-top={20}
+          shadow-camera-bottom={-20}
+        />
+        <hemisphereLight intensity={0.6} groundColor="#0f172a" color="#38bdf8" />
+        <pointLight position={[-5, 12, -2]} intensity={1.2} color="#f97316" distance={30} />
+        <pointLight position={[4, 8, 2]} intensity={1.2} color="#38bdf8" distance={30} />
+        <Suspense fallback={null}>
+          <Ground />
+          <BoilerUnit  live={live} anomalies={anomalies} selected={selected==="boiler"}  onSelect={setSelected} />
+          <TurbineUnit live={live} anomalies={anomalies} selected={selected==="turbine"} onSelect={setSelected} />
+          <PumpUnit    live={live} anomalies={anomalies} selected={selected==="pump"}    onSelect={setSelected} />
+          <Pipes />
+          <ClickCatcher onDeselect={setSelected} />
+          <OrbitControls maxPolarAngle={Math.PI/2 - 0.05} minDistance={8} maxDistance={75} />
+        </Suspense>
       </Canvas>
 
       {/* ── LEFT PANEL: Anomalies ── */}
-      <div style={{ position:"absolute", top:16, left:16, width:300, bottom:52, background:"#1a1f26", border:"1px solid #334155", borderRadius:8, display:"flex", flexDirection:"column", color:"white", boxShadow:"0 10px 30px rgba(0,0,0,0.5)" }}>
+      <div style={{ position:"absolute", top:16, left:16, width:300, bottom:52, background:"rgba(26,31,38,0.92)", backdropFilter:"blur(12px)", border:"1px solid #334155", borderRadius:12, display:"flex", flexDirection:"column", color:"white", boxShadow:"0 10px 30px rgba(0,0,0,0.6)" }}>
         <div style={{ padding:"12px 16px", fontSize:13, fontWeight:"bold", borderBottom:"1px solid #334155", letterSpacing:"0.05em" }}>
           ANOMALIES SUMMARY
           <span style={{ float:"right", fontSize:10, color:"#64748b", fontWeight:"normal" }}>live · auto-refresh 10s</span>
@@ -336,8 +350,8 @@ export default function Plant3D() {
           {["all","critical","moderate","minor"].map(s => (
             <div key={s} onClick={() => setSevTab(s)} style={{
               flex:1, textAlign:"center", padding:"9px 0", fontSize:11, cursor:"pointer",
-              color: sevTab===s ? (s==="critical"?"#ef4444":s==="moderate"?"#f59e0b":s==="minor"?"#10b981":"#10b981") : "#64748b",
-              borderBottom: sevTab===s ? `2px solid ${s==="critical"?"#ef4444":s==="moderate"?"#f59e0b":s==="minor"?"#10b981":"#6366f1"}` : "none",
+              color: sevTab===s ? (s==="critical"?"#ef4444":s==="moderate"?"#f59e0b":s==="minor"?"#10b981":"#38bdf8") : "#64748b",
+              borderBottom: sevTab===s ? `2px solid ${s==="critical"?"#ef4444":s==="moderate"?"#f59e0b":s==="minor"?"#10b981":"#38bdf8"}` : "none",
               fontWeight: sevTab===s ? "bold" : "normal",
             }}>
               {s.charAt(0).toUpperCase()+s.slice(1)} ({sevCounts[s]})
@@ -355,9 +369,9 @@ export default function Plant3D() {
             const cfg = SEV_CONFIG[ev.severity] || SEV_CONFIG.none;
             const Icon = cfg.Icon;
             return (
-              <div key={ev.id} style={{ background:cfg.bg, border:`1px solid ${cfg.color}`, borderRadius:6, overflow:"hidden" }}>
-                <div style={{ background:cfg.headerBg, padding:"5px 11px", fontSize:11, fontWeight:"bold", color:cfg.color, display:"flex", alignItems:"center", gap:6 }}>
-                  <Icon size={11} /> {(ev.severity||"").toUpperCase()} · {ev.anomaly_type?.replace(/_/g," ")||"Anomaly"}
+              <div key={ev.id} style={{ background:cfg.bg, border:`1px solid ${cfg.color}`, borderRadius:8, overflow:"hidden" }}>
+                <div style={{ background:cfg.headerBg, padding:"6px 11px", fontSize:11, fontWeight:"bold", color:cfg.color, display:"flex", alignItems:"center", gap:6 }}>
+                  {Icon ? <Icon size={12} /> : null} {(ev.severity||"").toUpperCase()} · {ev.anomaly_type?.replace(/_/g," ")||"Anomaly"}
                 </div>
                 <div style={{ padding:"8px 11px", fontSize:11, color:"#cbd5e1", lineHeight:1.6 }}>
                   <div style={{ display:"grid", gridTemplateColumns:"65px 1fr" }}>
@@ -368,6 +382,12 @@ export default function Plant3D() {
                   {ev.top_sensors?.length > 0 && (
                     <div style={{ marginTop:4, color:"#94a3b8" }}>Sensors: <span style={{ color:"#cbd5e1" }}>{ev.top_sensors.slice(0,2).join(", ")}</span></div>
                   )}
+                  {ev.root_cause_summary && (
+                    <div style={{ marginTop:6, paddingTop:6, borderTop:"1px solid rgba(255,255,255,0.08)", color:"#e2e8f0", fontSize:10 }}>
+                      <span style={{ color:"#f59e0b", fontWeight:"bold" }}>RCA: </span>
+                      {ev.root_cause_summary.slice(0, 110)}…
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -376,79 +396,93 @@ export default function Plant3D() {
       </div>
 
       {/* ── RIGHT PANEL: Asset + Chat ── */}
-      <div style={{ position:"absolute", top:16, right:16, width:310, bottom:52, display:"flex", flexDirection:"column", gap:12 }}>
+      <div style={{ position:"absolute", top:16, right:16, width:320, bottom:52, display:"flex", flexDirection:"column", gap:12 }}>
 
-        {/* Asset Data — changes on 3D click */}
-        <div style={{ background:"#1a1f26", border:`1px solid ${selected?"#3b82f6":"#334155"}`, borderRadius:8, color:"white", boxShadow:"0 10px 30px rgba(0,0,0,0.5)" }}>
-          <div style={{ padding:"10px 14px", fontSize:11, fontWeight:"bold", borderBottom:"1px solid #334155", color:"#94a3b8", letterSpacing:"0.05em" }}>
-            ASSET DATA {selected && <span style={{ color:"#3b82f6" }}>· CLICK 3D MODEL TO SWITCH</span>}
+        {/* Selected asset card */}
+        <div style={{ background:"rgba(26,31,38,0.92)", backdropFilter:"blur(12px)", border:"1px solid #334155", borderRadius:12, padding:"14px 16px", color:"white", boxShadow:"0 10px 30px rgba(0,0,0,0.6)" }}>
+          <div style={{ fontSize:10, color:"#64748b", fontWeight:"bold", letterSpacing:"0.08em", marginBottom:4 }}>ASSET DATA</div>
+          <div style={{ fontSize:14, fontWeight:"bold", color:"#38bdf8", marginBottom:10 }}>
+            {assetLabel} {selected ? "— SELECTED" : "— LIVE"}
           </div>
-          <div style={{ padding:"12px 14px" }}>
-            <div style={{ fontSize:13, fontWeight:"bold", color:"#10b981", marginBottom:10 }}>{assetLabel} — LIVE</div>
-            {selected ? (
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", rowGap:8, fontSize:12, color:"#94a3b8" }}>
-                {assetFields.map(f => {
-                  const raw = live[f.key];
-                  const val = raw != null ? f.fmt(raw) : "—";
-                  return (
-                    <>
-                      <div key={f.label}>{f.label}:</div>
-                      <div key={f.key} style={{ color:"white", textAlign:"right", fontVariantNumeric:"tabular-nums" }}>{val} <span style={{ color:"#475569", fontSize:10 }}>{f.unit}</span></div>
-                    </>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ fontSize:11, color:"#475569" }}>Click a 3D component (Boiler, Turbine, Pump) to see its live sensor readings here.</div>
-            )}
-          </div>
+
+          {selected && assetFields.length > 0 ? (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              {assetFields.map(({ label, key, unit, fmt }) => {
+                const val = live[key];
+                return (
+                  <div key={key} style={{ background:"rgba(255,255,255,0.04)", borderRadius:6, padding:"6px 10px" }}>
+                    <div style={{ fontSize:10, color:"#64748b" }}>{label}</div>
+                    <div style={{ fontSize:14, fontWeight:"bold", color:"#f1f5f9", marginTop:2 }}>
+                      {val !== undefined ? `${fmt(val)} ${unit}` : "—"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ fontSize:11, color:"#64748b", lineHeight:1.6 }}>
+              Click a 3D component (Boiler, Turbine, Pump) to see its live sensor readings here.
+            </div>
+          )}
+
+          {selected && (
+            <button
+              onClick={() => setSelected(null)}
+              style={{ marginTop:10, width:"100%", padding:"5px 0", fontSize:11, background:"rgba(255,255,255,0.06)", border:"1px solid #334155", borderRadius:5, color:"#94a3b8", cursor:"pointer" }}
+            >
+              Clear Selection
+            </button>
+          )}
         </div>
 
         {/* AI Chat — real backend */}
-        <div style={{ flex:1, background:"#1a1f26", border:"1px solid #334155", borderRadius:8, display:"flex", flexDirection:"column", color:"white", boxShadow:"0 10px 30px rgba(0,0,0,0.5)" }}>
-          <div style={{ padding:"10px 14px", fontSize:11, fontWeight:"bold", borderBottom:"1px solid #334155", color:"#94a3b8", letterSpacing:"0.05em" }}>
+        <div style={{ flex:1, background:"rgba(26,31,38,0.92)", backdropFilter:"blur(12px)", border:"1px solid #334155", borderRadius:12, display:"flex", flexDirection:"column", overflow:"hidden", color:"white", boxShadow:"0 10px 30px rgba(0,0,0,0.6)" }}>
+          <div style={{ padding:"10px 14px", borderBottom:"1px solid #334155", fontSize:12, fontWeight:"bold", letterSpacing:"0.05em", color:"#cbd5e1" }}>
             AI INSIGHTS — LIVE AGENT
           </div>
-          <div style={{ flex:1, padding:12, overflowY:"auto", display:"flex", flexDirection:"column", gap:10 }}>
-            {messages.length === 0 && (
-              <div style={{ color:"#475569", fontSize:11, textAlign:"center", marginTop:16 }}>
+
+          {/* Messages */}
+          <div style={{ flex:1, overflowY:"auto", padding:12, display:"flex", flexDirection:"column", gap:8 }}>
+            {messages.length === 0 ? (
+              <div style={{ color:"#64748b", fontSize:11, textAlign:"center", marginTop:24 }}>
                 Ask the AI about any anomaly or plant condition…
               </div>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} style={{
-                alignSelf: m.role==="user" ? "flex-end" : "flex-start",
-                background: m.role==="user" ? "rgba(99,102,241,0.25)" : "rgba(255,255,255,0.04)",
-                borderLeft: m.role==="ai" ? "2px solid #6366f1" : "none",
-                border: m.role==="user" ? "1px solid #4f46e5" : "1px solid #1e293b",
-                padding:"8px 10px", borderRadius:6, fontSize:11, color:"#e2e8f0", lineHeight:1.55,
-                maxWidth:"90%", whiteSpace:"pre-wrap"
-              }}>
-                <span style={{ fontWeight:"bold", color: m.role==="user"?"#a5b4fc":"#94a3b8" }}>
-                  {m.role==="user" ? "You" : "AI Agent"}:{" "}
-                </span>
+            ) : messages.map((m, i) => (
+              <div
+                key={i}
+                style={{
+                  alignSelf: m.role==="user" ? "flex-end" : "flex-start",
+                  background: m.role==="user" ? "#4f46e5" : "rgba(255,255,255,0.07)",
+                  border: m.role==="ai" ? "1px solid #334155" : "none",
+                  borderRadius:8, padding:"8px 11px", maxWidth:"90%",
+                  fontSize:11, lineHeight:1.5, color: m.role==="user" ? "white" : "#cbd5e1",
+                  whiteSpace:"pre-wrap",
+                }}
+              >
                 {m.text}
               </div>
             ))}
             {sending && (
-              <div style={{ display:"flex", alignItems:"center", gap:6, color:"#475569", fontSize:11 }}>
-                <Loader2 size={13} style={{ animation:"spin 1s linear infinite" }} /> Thinking…
+              <div style={{ alignSelf:"flex-start", display:"flex", alignItems:"center", gap:6, color:"#64748b", fontSize:11 }}>
+                <Loader2 size={12} className="animate-spin" /> Analyzing…
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
+
+          {/* Chat input */}
           <div style={{ padding:10, borderTop:"1px solid #334155", display:"flex", gap:8 }}>
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key==="Enter" && sendMessage()}
               placeholder="Ask about the plant…"
-              style={{ flex:1, background:"rgba(255,255,255,0.05)", border:"1px solid #334155", borderRadius:5, padding:"7px 10px", color:"white", fontSize:11, outline:"none" }}
+              style={{ flex:1, background:"rgba(255,255,255,0.05)", border:"1px solid #334155", borderRadius:6, padding:"7px 10px", color:"white", fontSize:11, outline:"none" }}
             />
             <button
               onClick={sendMessage}
               disabled={sending || !input.trim()}
-              style={{ background: sending||!input.trim() ? "#1e293b" : "#4f46e5", border:"none", borderRadius:5, width:32, display:"flex", alignItems:"center", justifyContent:"center", cursor: sending ? "wait" : "pointer" }}
+              style={{ background: sending||!input.trim() ? "#1e293b" : "#4f46e5", border:"none", borderRadius:6, width:32, display:"flex", alignItems:"center", justifyContent:"center", cursor: sending ? "wait" : "pointer" }}
             >
               <Send size={14} color="white" />
             </button>
@@ -457,7 +491,7 @@ export default function Plant3D() {
       </div>
 
       {/* Hint overlay */}
-      <div style={{ position:"absolute", bottom:60, right:360, display:"flex", flexDirection:"column", gap:7, color:"#94a3b8", fontSize:10, fontWeight:"bold", letterSpacing:"0.08em", textAlign:"right" }}>
+      <div style={{ position:"absolute", bottom:60, right:360, display:"flex", flexDirection:"column", gap:7, color:"#94a3b8", fontSize:10, fontWeight:"bold", letterSpacing:"0.08em", textAlign:"right", pointerEvents:"none" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:5 }}>ORBIT <MousePointer2 size={11} color="#06b6d4" /></div>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:5 }}>PAN <Move size={11} color="#06b6d4" /></div>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:5 }}>ZOOM <ZoomIn size={11} color="#06b6d4" /></div>
@@ -465,7 +499,7 @@ export default function Plant3D() {
       </div>
 
       {/* ── BOTTOM STATUS BAR ── */}
-      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:40, background:"#11151a", borderTop:"1px solid #334155", display:"flex", alignItems:"center", justifyContent:"center", gap:36, color:"#64748b", fontSize:11, fontWeight:"bold", letterSpacing:"0.05em" }}>
+      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:40, background:"#0b0f17", borderTop:"1px solid #334155", display:"flex", alignItems:"center", justifyContent:"center", gap:36, color:"#64748b", fontSize:11, fontWeight:"bold", letterSpacing:"0.05em" }}>
         <span>SYSTEM STATUS: <span style={{ color:"#10b981" }}>LIVE</span></span>
         <div style={{ width:1, height:16, background:"#334155" }} />
         <span>DATA REFRESH: <span style={{ color:"#10b981" }}>1s</span></span>

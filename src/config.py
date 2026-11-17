@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     # ── LLM ──────────────────────────────────────────────────────────
     gemini_api_key: str            = Field(default="", alias="GEMINI_API_KEY")
     gemini_background_api_key: str = Field(default="", alias="GEMINI_BACKGROUND_API_KEY")
-    gemini_model: str              = Field(default="gemini-1.5-flash")
+    gemini_api_keys: str           = Field(default="", alias="GEMINI_API_KEYS")
+    gemini_model: str              = Field(default="gemini-3.5-flash-lite")
     ollama_base_url: str           = Field(default="http://localhost:11434")
     ollama_model: str              = Field(default="llama3.2:7b")
     llm_ping_host: str             = Field(default="8.8.8.8")
@@ -71,6 +72,28 @@ class Settings(BaseSettings):
     data_processed_dir: Path       = PROJECT_ROOT / "data" / "processed"
     data_synthetic_dir: Path       = PROJECT_ROOT / "data" / "synthetic"
     models_dir: Path               = PROJECT_ROOT / "models"
+
+    @property
+    def gemini_api_keys_list(self) -> list[str]:
+        """Returns the list of all available Gemini API keys."""
+        keys: list[str] = []
+        if self.gemini_api_keys:
+            raw = self.gemini_api_keys.strip()
+            if raw.startswith("[") and raw.endswith("]"):
+                import json
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        keys = [str(k).strip() for k in parsed if str(k).strip()]
+                except Exception:
+                    pass
+            if not keys:
+                keys = [k.strip().strip('"').strip("'") for k in raw.split(",") if k.strip()]
+        if self.gemini_api_key and self.gemini_api_key not in keys:
+            keys.insert(0, self.gemini_api_key)
+        if self.gemini_background_api_key and self.gemini_background_api_key not in keys:
+            keys.append(self.gemini_background_api_key)
+        return keys
 
     @field_validator("cors_origins", mode="before")
     @classmethod

@@ -246,18 +246,33 @@ class CogeTwinAgent:
         tool_node = ToolNode(tools)
 
         def call_model(state: AgentState) -> dict:
-            llm = self._router.get_llm_for_chain(temperature=0.1, max_tokens=2048)
-            llm_with_tools = llm.bind_tools(tools)
+            max_attempts = max(1, len(getattr(self._router, "_keys", [])))
+            last_err = None
+            for attempt in range(max_attempts):
+                try:
+                    llm = self._router.get_llm_for_chain(temperature=0.1, max_tokens=2048)
+                    llm_with_tools = llm.bind_tools(tools)
 
-            system_msg = SYSTEM_PROMPT.format(
-                current_time=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-                backend=self._router.active_backend,
-            )
-            from langchain_core.messages import SystemMessage
-            messages = [SystemMessage(content=system_msg)] + state["messages"]
+                    system_msg = SYSTEM_PROMPT.format(
+                        current_time=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+                        backend=self._router.active_backend,
+                    )
+                    from langchain_core.messages import SystemMessage
+                    messages = [SystemMessage(content=system_msg)] + state["messages"]
 
-            response = llm_with_tools.invoke(messages)
-            return {"messages": [response]}
+                    response = llm_with_tools.invoke(messages)
+                    return {"messages": [response]}
+                except Exception as e:
+                    last_err = e
+                    logger.warning(
+                        "Agent call_model attempt %d failed: %s. Rotating key...",
+                        attempt + 1, e
+                    )
+                    if hasattr(self._router, "rotate_key") and attempt < max_attempts - 1:
+                        self._router.rotate_key()
+                    else:
+                        break
+            raise last_err or RuntimeError("All LLM keys failed.")
 
         def should_continue(state: AgentState) -> str:
             last = state["messages"][-1]
@@ -296,10 +311,10 @@ class CogeTwinAgent:
         )
 
         try:
-            result = await asyncio.wait_for(self._graph.ainvoke(state), timeout=25.0)
+            result = await asyncio.wait_for(self._graph.ainvoke(state), timeout=45.0)
         except Exception as e:
             logger.error(f"Agent graph execution failed: {e}")
-            result = {"messages": [AIMessage(content="⚠️ AI Backend Error: The model is currently unavailable or rate-limited. Please try again in a few moments.")]}
+            result = {"messages": [AIMessage(content=f"⚠️ AI Backend Error: {str(e)[:200]}")]}
         ai_messages = [m for m in result["messages"] if isinstance(m, AIMessage)]
 
         if ai_messages:

@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, RefreshCw, Wifi, WifiOff, ChevronRight } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Send, Bot, User, RefreshCw, Wifi, WifiOff, ChevronRight, Loader2 } from "lucide-react";
 
 const API = "http://localhost:8000";
 
@@ -86,11 +86,29 @@ export default function ChatPage() {
   const [input,   setInput]   = useState("");
   const [loading, setLoading] = useState(false);
   const [status,  setStatus]  = useState(null);
+  const [statusLoading, setStatusLoading] = useState(false);
   const bottomRef = useRef(null);
 
-  useEffect(() => {
-    fetch(`${API}/chat/llm-status`).then(r=>r.json()).then(setStatus).catch(()=>{});
+  const fetchStatus = useCallback(async () => {
+    setStatusLoading(true);
+    try {
+      const r = await fetch(`${API}/chat/llm-status`);
+      if (r.ok) {
+        const data = await r.json();
+        setStatus(data);
+      }
+    } catch {
+      // Backend not reached
+    } finally {
+      setStatusLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchStatus();
+    const timer = setInterval(fetchStatus, 4000);
+    return () => clearInterval(timer);
+  }, [fetchStatus]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior:"smooth" });
@@ -130,7 +148,8 @@ export default function ChatPage() {
     setMsgs([INIT_MSG]);
   }
 
-  const online = status?.active_backend === "gemini";
+  const isGemini = status?.active_backend === "gemini";
+  const isConnecting = status === null;
   const PAGE_H = "calc(100vh - 64px)";
 
   return (
@@ -142,18 +161,44 @@ export default function ChatPage() {
         {/* LLM Status Card */}
         <div style={{
           borderRadius:14, padding:"14px 16px",
-          background: online ? "linear-gradient(135deg,#ecfdf5,#d1fae5)":"linear-gradient(135deg,#fef9c3,#fef3c7)",
-          border:`1px solid ${online?"#6ee7b7":"#fcd34d"}`
+          background: isConnecting
+            ? "linear-gradient(135deg,#f8fafc,#f1f5f9)"
+            : isGemini
+            ? "linear-gradient(135deg,#ecfdf5,#d1fae5)"
+            : "linear-gradient(135deg,#fef9c3,#fef3c7)",
+          border:`1px solid ${isConnecting ? "#cbd5e1" : isGemini ? "#6ee7b7" : "#fcd34d"}`,
+          transition: "all 0.3s ease"
         }}>
-          <div className="sec-label" style={{ marginBottom:8 }}>LLM Backend</div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+            <div className="sec-label">LLM Backend</div>
+            <button
+              onClick={fetchStatus}
+              title="Refresh AI Backend Status"
+              style={{
+                background:"transparent", border:"none", cursor:"pointer",
+                padding:2, color:"#64748b", display:"flex", alignItems:"center"
+              }}
+            >
+              <RefreshCw size={12} className={statusLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            {online ? <Wifi size={15} color="#059669"/> : <WifiOff size={15} color="#d97706"/>}
-            <span style={{ fontWeight:700, fontSize:13.5, color: online?"#065f46":"#92400e" }}>
-              {online ? "🟢 Gemini 2.5 Flash":"🟠 Ollama (Local)"}
+            {isConnecting ? (
+              <Loader2 size={15} color="#64748b" className="animate-spin" />
+            ) : isGemini ? (
+              <Wifi size={15} color="#059669"/>
+            ) : (
+              <WifiOff size={15} color="#d97706"/>
+            )}
+            <span style={{
+              fontWeight:700, fontSize:13.5,
+              color: isConnecting ? "#475569" : isGemini ? "#065f46" : "#92400e"
+            }}>
+              {isConnecting ? "Connecting..." : isGemini ? "🟢 Gemini Online" : "🟠 Ollama (Offline)"}
             </span>
           </div>
           <p style={{ fontSize:11, color:"#64748b", marginTop:5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-            {status?.active_model || "—"}
+            {isConnecting ? "Checking API..." : status?.active_model || "—"}
           </p>
         </div>
 

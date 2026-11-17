@@ -3,7 +3,7 @@ import LiveTwin from "./pages/LiveTwin";
 import OptimizerPage from "./pages/OptimizerPage";
 import ChatPage from "./pages/ChatPage";
 import AnomalyLog from "./pages/AnomalyLog";
-import Plant3D from "./pages/Plant3D";
+import CogenerationPlant3D from "./pages/CogenerationPlant3D";
 import { Activity, Zap, Bot, AlertTriangle, Factory, Box } from "lucide-react";
 import "./index.css";
 
@@ -68,7 +68,7 @@ export default function App() {
         <main className="main-scroll">
           <Routes>
             <Route path="/"          element={<LiveTwin />}      />
-            <Route path="/3d-plant"  element={<Plant3D />}       />
+            <Route path="/3d-plant"  element={<CogenerationPlant3D />} />
             <Route path="/optimizer" element={<OptimizerPage />} />
             <Route path="/chat"      element={<ChatPage />}      />
             <Route path="/anomalies" element={<AnomalyLog />}    />
